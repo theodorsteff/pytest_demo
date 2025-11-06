@@ -3,9 +3,10 @@ Pytest + Selenium demo
 This small demo shows how to use pytest with Selenium (Firefox) to open https://www.google.com and verify the page title.
 
 Requirements
-- Python 3.8+
+- Python 3.11+ (recommended, 3.8+ supported)
 - Firefox browser (either system Firefox, or download portable Firefox - see below)
 - xvfb package if running headless tests without a display server
+- Docker (if using Kubernetes integration)
 
 Quick start
 
@@ -152,14 +153,52 @@ kubectl create rolebinding jenkins-admin-binding --clusterrole=admin --serviceac
 ```
 
 The included Jenkinsfile will automatically:
-- Create a pod with Python and Selenium containers
+- Create a pod with Python 3.11 and Selenium containers
+- Mount Docker socket for Docker-in-Docker support
+- Use optimized resource limits:
+  - Python container: 256Mi memory, 250m CPU
+  - Selenium container: 1Gi memory, 500m CPU
+- Support parallel test execution with SE_NODE_MAX_SESSIONS=4
 - Run the tests in the containerized environment
-- Report test results
+- Report and archive test results
+
+Project Structure
+```
+pytest_demo/
+├── Jenkinsfile              # Jenkins pipeline configuration
+├── README.md               # This file
+├── conftest.py            # Pytest configuration and fixtures
+├── requirements.txt       # Python dependencies
+├── k8s/                  # Kubernetes configurations
+│   ├── pod.yaml         # Pod definition for testing
+│   └── selenium-grid.yaml # Optional Selenium grid setup
+├── scripts/             # Helper scripts
+│   ├── get_firefox.sh  # Download and manage Firefox
+│   └── setup_minikube_docker.sh # Setup Docker-based Minikube
+└── tests/              # Test files
+    └── test_google.py # Example test
+```
+
+Dependencies
+The project uses specific versions to ensure compatibility:
+```
+pytest>=7.4.3
+selenium>=4.15.2
+webdriver-manager>=4.0.1
+kubernetes>=28.1.0  # For kubectl operations
+```
 
 Notes and troubleshooting
-- The project uses `webdriver-manager` to download a matching geckodriver automatically.
+- The project uses `webdriver-manager` to download a matching geckodriver automatically
 - If Firefox fails to start:
-  - Try a portable Firefox (see above "Get Firefox" steps).
+  - Try a portable Firefox (see above "Get Firefox" steps)
   - Or install Firefox ESR if available: `sudo apt install -y firefox-esr`
-  - If using system Firefox and it's a snap package, you may need to set `FIREFOX_BINARY` to point to a non-snap Firefox binary.
-- To run non-headless (debug), edit `conftest.py` and set `options.headless = False`.
+  - If using system Firefox and it's a snap package, you may need to set `FIREFOX_BINARY`
+- To run non-headless (debug), edit `conftest.py` and set `options.headless = False`
+
+Kubernetes-specific notes:
+- Minikube with Docker driver is recommended for VMs (no nested virtualization needed)
+- The setup uses Docker-in-Docker via socket mount for container operations
+- Resource limits are optimized for typical CI/CD environments
+- Selenium container supports up to 4 parallel test sessions
+- All helper scripts are executable (`chmod +x scripts/*.sh`)
