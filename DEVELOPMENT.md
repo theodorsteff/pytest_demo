@@ -67,19 +67,7 @@ FIREFOX_BINARY="$(pwd)/firefox/firefox" pytest -v
 
 ### 3. Testing in Kubernetes
 
-a) Using Jenkins pipeline locally:
-```bash
-# Ensure cluster is ready
-./scripts/minikube_helper.sh status
-
-# Get Minikube IP for Jenkins configuration
-minikube ip
-
-# Configure Jenkins with the Minikube IP and credentials
-# Then run the pipeline in Jenkins
-```
-
-b) Manual pod deployment:
+Manual pod deployment for quick tests:
 ```bash
 # Deploy test pod
 kubectl apply -f k8s/pod.yaml
@@ -91,7 +79,148 @@ kubectl get pods
 kubectl exec -it <pod-name> -- pytest -v
 ```
 
-### 4. Resource Management
+### 4. Testing in Jenkins
+
+#### Prerequisites
+
+1. Jenkins Installation
+   ```bash
+   # If Jenkins isn't installed, install it:
+   curl -fsSL https://pkg.jenkins.io/debian-stable/jenkins.io-2023.key | sudo tee \
+     /usr/share/keyrings/jenkins-keyring.asc > /dev/null
+   echo deb [signed-by=/usr/share/keyrings/jenkins-keyring.asc] \
+     https://pkg.jenkins.io/debian-stable binary/ | sudo tee \
+     /etc/apt/sources.list.d/jenkins.list > /dev/null
+   sudo apt update
+   sudo apt install jenkins
+   ```
+
+2. Required Jenkins Plugins
+   - Install via Manage Jenkins > Plugins:
+     - Kubernetes Plugin
+     - Pipeline Plugin
+     - Git Plugin
+     - JUnit Plugin
+
+3. Kubernetes Integration Setup
+   ```bash
+   # Ensure Minikube is running
+   ./scripts/minikube_helper.sh status
+
+   # Get Minikube IP and certificates
+   MINIKUBE_IP=$(minikube ip)
+   mkdir -p ~/jenkins-k8s-certs
+   minikube ssh sudo cat /var/lib/minikube/certs/ca.crt > ~/jenkins-k8s-certs/ca.crt
+   minikube ssh sudo cat /var/lib/minikube/certs/apiserver-kubelet-client.crt > ~/jenkins-k8s-certs/client.crt
+   minikube ssh sudo cat /var/lib/minikube/certs/apiserver-kubelet-client.key > ~/jenkins-k8s-certs/client.key
+   ```
+
+#### Jenkins Configuration
+
+1. Add Kubernetes Cloud
+   - Navigate to Manage Jenkins > Configure System
+   - Add Cloud > Kubernetes
+   - Configure:
+     ```
+     Name: kubernetes
+     Kubernetes URL: https://<MINIKUBE_IP>:8443
+     Kubernetes Namespace: default
+     Credentials: Add > Kubernetes Service Account
+     ```
+
+2. Add Credentials
+   - In Add Credentials form:
+     ```
+     Kind: Kubernetes Service Account
+     ID: minikube-credentials
+     Description: Minikube cluster credentials
+     ```
+   - Copy contents from:
+     - `~/jenkins-k8s-certs/ca.crt` → Certificate Authority Data
+     - `~/jenkins-k8s-certs/client.crt` → Client Certificate Data
+     - `~/jenkins-k8s-certs/client.key` → Client Key Data
+
+#### Development Workflow
+
+1. Create Jenkins Pipeline
+   ```bash
+   # In Jenkins UI:
+   New Item > Pipeline
+   Name: pytest-selenium-demo
+   ```
+
+2. Configure Pipeline
+   - Pipeline Configuration:
+     ```
+     Pipeline from SCM
+     SCM: Git
+     Repository URL: https://github.com/theodorsteff/pytest_demo.git
+     Branch Specifier: */main
+     Script Path: Jenkinsfile
+     ```
+
+3. Development Cycle
+   ```bash
+   # 1. Make changes locally and test
+   pytest -v
+
+   # 2. Commit and push changes
+   git commit -am "your changes"
+   git push origin main
+
+   # 3. Build in Jenkins
+   # Either:
+   # - Click "Build Now" in Jenkins UI
+   # - Or use Jenkins CLI:
+   java -jar jenkins-cli.jar -s http://localhost:8080/ build pytest-selenium-demo
+
+   # 4. Monitor build
+   # - View console output in Jenkins UI
+   # - Or use Jenkins CLI:
+   java -jar jenkins-cli.jar -s http://localhost:8080/ console pytest-selenium-demo
+   ```
+
+4. Review Results
+   - Check test results in Jenkins UI
+   - Review artifacts (logs, reports)
+   - Check Kubernetes pod status:
+     ```bash
+     ./scripts/minikube_helper.sh status
+     ```
+
+#### Troubleshooting Jenkins Builds
+
+1. Pod Issues
+   ```bash
+   # Check pod status
+   kubectl get pods
+
+   # Get pod logs
+   kubectl logs <pod-name>
+
+   # Describe pod for events
+   kubectl describe pod <pod-name>
+   ```
+
+2. Jenkins Connection Issues
+   ```bash
+   # Verify Minikube is running
+   ./scripts/minikube_helper.sh status
+
+   # Check Jenkins can reach Minikube
+   curl -k https://<MINIKUBE_IP>:8443
+   ```
+
+3. Resource Issues
+   ```bash
+   # Check node resources
+   kubectl describe node minikube
+
+   # Clean up if needed
+   ./scripts/minikube_helper.sh clean
+   ```
+
+### 5. Resource Management
 
 Monitor and manage cluster resources:
 ```bash
