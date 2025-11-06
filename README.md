@@ -98,9 +98,16 @@ sudo install minikube-linux-amd64 /usr/local/bin/minikube
 minikube start
 
 # For Docker driver (recommended in VMs, no nested virtualization needed):
-# Use the included helper script to set up Docker and start Minikube:
+# Initial setup with Docker:
 chmod +x scripts/setup_minikube_docker.sh
 ./scripts/setup_minikube_docker.sh 2048  # specify memory in MB
+
+# Or use the comprehensive helper script for ongoing management:
+chmod +x scripts/minikube_helper.sh
+./scripts/minikube_helper.sh start --memory 2048 --cpus 2  # Start with custom resources
+./scripts/minikube_helper.sh status    # Check cluster status
+./scripts/minikube_helper.sh clean     # Clean up resources
+./scripts/minikube_helper.sh dashboard # Open Kubernetes dashboard
 ```
 
 3. Get Kubernetes Credentials for Jenkins
