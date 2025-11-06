@@ -39,6 +39,19 @@ rm firefox.tar.bz2
 export FIREFOX_BINARY="$(pwd)/firefox/firefox"
 ```
 
+Automatic download
+
+You can use the included helper script to download and unpack Firefox automatically into `./firefox`:
+
+```bash
+# Download (or update) the portable Firefox into ./firefox
+./scripts/get_firefox.sh
+
+# Then run tests using the downloaded binary:
+export FIREFOX_BINARY="$(pwd)/firefox/firefox"
+xvfb-run -s "-screen 0 1920x1080x24" pytest -q
+```
+
 4) Run tests
 
 ```bash

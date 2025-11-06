@@ -62,3 +62,35 @@ def driver():
         raise
     yield driver
     driver.quit()
+
+
+# Ensure a suitable Firefox binary is available before any tests run.
+@pytest.fixture(scope="session", autouse=True)
+def ensure_firefox_available():
+    """Download a portable Firefox into ./firefox if FIREFOX_BINARY is not set.
+
+    This makes tests easier to run locally and in CI when system Firefox is a
+    snap or otherwise incompatible. The script `scripts/get_firefox.sh` is
+    idempotent and will only download when needed.
+    """
+    if os.environ.get("FIREFOX_BINARY"):
+        return
+
+    local_bin = os.path.join(os.getcwd(), "firefox", "firefox")
+    if os.path.exists(local_bin):
+        os.environ["FIREFOX_BINARY"] = local_bin
+        return
+
+    script = os.path.join(os.getcwd(), "scripts", "get_firefox.sh")
+    if os.path.exists(script) and os.access(script, os.X_OK):
+        # Run the helper to fetch Firefox
+        import subprocess
+        subprocess.check_call([script])
+        if os.path.exists(local_bin):
+            os.environ["FIREFOX_BINARY"] = local_bin
+            return
+
+    # If we reach here, tests will continue and Selenium will attempt to use
+    # the system Firefox; we'll just let the original driver fixture handle
+    # errors (and write logs).
+    return
