@@ -8,33 +8,44 @@ metadata:
   labels:
     app: pytest-selenium
 spec:
+  volumes:
+    - name: docker-socket
+      hostPath:
+        path: /var/run/docker.sock
   containers:
   - name: python
-    image: python:3.8-slim
+    image: python:3.11-slim  # Updated to newer Python
     command:
     - cat
     tty: true
     resources:
       requests:
+        memory: "256Mi"  # Reduced since we're not doing heavy processing
+        cpu: "250m"
+      limits:
         memory: "512Mi"
         cpu: "500m"
-      limits:
-        memory: "1Gi"
-        cpu: "1"
-  - name: xvfb
+  - name: selenium
     image: selenium/standalone-firefox:latest
     securityContext:
-      privileged: true
+      privileged: true  # Required for Docker-in-Docker
+    volumeMounts:
+      - name: docker-socket
+        mountPath: /var/run/docker.sock
     env:
     - name: START_XVFB
+      value: "true"
+    - name: SE_NODE_MAX_SESSIONS
+      value: "4"
+    - name: SE_NODE_OVERRIDE_MAX_SESSIONS
       value: "true"
     resources:
       requests:
         memory: "1Gi"
-        cpu: "1"
+        cpu: "500m"
       limits:
         memory: "2Gi"
-        cpu: "2"
+        cpu: "1"
 '''
         }
     }

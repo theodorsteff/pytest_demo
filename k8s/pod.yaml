@@ -5,16 +5,22 @@ metadata:
   labels:
     app: pytest-selenium
 spec:
+  volumes:
+    - name: shared-data
+      emptyDir: {}
+    - name: docker-socket
+      hostPath:
+        path: /var/run/docker.sock
   containers:
   - name: python
-    image: python:3.8-slim
+    image: python:3.11-slim
     resources:
       requests:
+        memory: "256Mi"
+        cpu: "250m"
+      limits:
         memory: "512Mi"
         cpu: "500m"
-      limits:
-        memory: "1Gi"
-        cpu: "1"
     volumeMounts:
     - name: shared-data
       mountPath: /tests
@@ -26,19 +32,21 @@ spec:
     env:
     - name: START_XVFB
       value: "true"
+    - name: SE_NODE_MAX_SESSIONS
+      value: "4"
+    - name: SE_NODE_OVERRIDE_MAX_SESSIONS
+      value: "true"
     ports:
     - containerPort: 4444
     resources:
       requests:
         memory: "1Gi"
-        cpu: "1"
+        cpu: "500m"
       limits:
         memory: "2Gi"
-        cpu: "2"
+        cpu: "1"
     volumeMounts:
     - name: shared-data
       mountPath: /tests
-
-  volumes:
-  - name: shared-data
-    emptyDir: {}
+    - name: docker-socket
+      mountPath: /var/run/docker.sock
