@@ -27,29 +27,30 @@ sudo apt install -y xvfb
 
 3) Get Firefox
 
-If your system's Firefox is a snap package or otherwise incompatible, you can use a portable Firefox:
+If your system's Firefox is a snap package or otherwise incompatible, you can use a portable Firefox. The included helper script makes this easy:
 
 ```bash
-# Download and unpack Firefox to ./firefox/firefox:
-wget -O firefox.tar.bz2 "https://download.mozilla.org/?product=firefox-latest&os=linux64&lang=en-US"
-tar xf firefox.tar.bz2
-rm firefox.tar.bz2
+# Download Firefox to ./firefox (safe, won't overwrite existing):
+./scripts/get_firefox.sh
 
-# Tell Selenium to use the local Firefox:
+# Force re-download (replace existing ./firefox):
+./scripts/get_firefox.sh --force
+
+# Skip download if ./firefox exists:
+./scripts/get_firefox.sh --keep
+
+# Override architecture (default: auto-detected):
+./scripts/get_firefox.sh --arch=linux-aarch64  # for ARM64
+./scripts/get_firefox.sh --arch=linux64        # for x86_64
+
+# After download, use the local Firefox:
 export FIREFOX_BINARY="$(pwd)/firefox/firefox"
 ```
 
-Automatic download
-
-You can use the included helper script to download and unpack Firefox automatically into `./firefox`:
-
-```bash
-# Download (or update) the portable Firefox into ./firefox
-./scripts/get_firefox.sh
-
-# Then run tests using the downloaded binary:
-export FIREFOX_BINARY="$(pwd)/firefox/firefox"
-xvfb-run -s "-screen 0 1920x1080x24" pytest -q
+Note: The helper script is idempotent and safe by default:
+- If `./firefox` doesn't exist: downloads and unpacks Firefox there
+- If `./firefox` exists: refuses to overwrite unless `--force` is passed
+- With `--keep`: skips download if `./firefox` exists (useful in CI)
 ```
 
 4) Run tests
