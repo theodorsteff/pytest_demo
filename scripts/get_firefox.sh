@@ -13,10 +13,12 @@ KEEP=0
 
 usage() {
   cat <<EOF
-Usage: $0 [--keep]
+Usage: $0 [--keep] [--force] [--arch=<arch>]
 
 Options:
   --keep    If ./firefox already exists, don't overwrite it (skip download).
+  --force   Overwrite existing ./firefox if present.
+  --arch    Override detected architecture (e.g. linux64, linux-aarch64)
   -h|--help Show this help
 EOF
 }
@@ -24,16 +26,25 @@ EOF
 for arg in "$@"; do
   case "$arg" in
     --keep) KEEP=1 ;;
+    --force) FORCE=1 ;;
     -h|--help) usage; exit 0 ;;
     --arch=*) ARCH="${arg#--arch=}" ;;
     *) echo "Unknown arg: $arg"; usage; exit 2 ;;
   esac
 done
 
-if [ -d "$OUTDIR" ] && [ "$KEEP" -eq 1 ]; then
-  echo "${OUTDIR} exists and --keep set; skipping download"
-  echo "To use it with tests: export FIREFOX_BINARY=\"$OUTDIR/firefox\""
-  exit 0
+if [ -d "$OUTDIR" ]; then
+  if [ "$KEEP" -eq 1 ]; then
+    echo "${OUTDIR} exists and --keep set; skipping download"
+    echo "To use it with tests: export FIREFOX_BINARY=\"$OUTDIR/firefox\""
+    exit 0
+  fi
+  if [ "$FORCE" -ne 1 ]; then
+    echo "${OUTDIR} already exists. To overwrite it pass --force, or pass --keep to skip." >&2
+    echo "To use the existing copy with tests: export FIREFOX_BINARY=\"$OUTDIR/firefox\""
+    exit 0
+  fi
+  echo "Overwriting existing ${OUTDIR} because --force was passed..."
 fi
 
 if [ -z "$ARCH" ]; then

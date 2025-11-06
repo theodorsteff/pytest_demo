@@ -1,4 +1,5 @@
 import os
+import sys
 import tempfile
 import shutil
 import pytest
@@ -76,10 +77,24 @@ def ensure_firefox_available():
     if os.environ.get("FIREFOX_BINARY"):
         return
 
-    local_bin = os.path.join(os.getcwd(), "firefox", "firefox")
-    if os.path.exists(local_bin):
-        os.environ["FIREFOX_BINARY"] = local_bin
-        return
+    local_dir = os.path.join(os.getcwd(), "firefox")
+    local_bin = os.path.join(local_dir, "firefox")
+    # If a local firefox directory already exists, do NOT run the downloader.
+    # This prevents the script from overwriting an existing portable firefox.
+    if os.path.isdir(local_dir):
+        if os.path.exists(local_bin):
+            os.environ["FIREFOX_BINARY"] = local_bin
+            return
+        else:
+            # Directory exists but binary missing — inform the user and do not
+            # overwrite the directory. They can run the helper with --force to
+            # re-download if desired.
+            print(
+                f"Found {local_dir} but no firefox binary at {local_bin}.\n"
+                "Either place a Firefox binary there, set FIREFOX_BINARY, or run './scripts/get_firefox.sh --force' to replace it.",
+                file=sys.stderr,
+            )
+            return
 
     script = os.path.join(os.getcwd(), "scripts", "get_firefox.sh")
     if os.path.exists(script) and os.access(script, os.X_OK):
