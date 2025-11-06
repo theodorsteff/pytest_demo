@@ -1,0 +1,9 @@
+  - :name: selenium-hub
+    image: selenium/hub:latest
+    ports:
+      - "4442:4442"
+      - "4443:4443"
+      - "4444:4444"
+    env:
+      - name: GRID_MAX_SESSION
+        value: "5"
