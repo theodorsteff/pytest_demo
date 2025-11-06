@@ -63,12 +63,93 @@ pytest -q
 xvfb-run -s "-screen 0 1920x1080x24" pytest -q
 ```
 
-5) Complete command would look like this
+5) Complete command with force firefox re-download would look like this
 
 ```bash
-# Run tests headless under xvfb:
-FIREFOX_BINARY="$(pwd)/firefox/firefox" xvfb-run -s "-screen 0 1920x1080x24" /home/thesteff/workspace/pytest_demo/.venv/bin/python -m pytest -q
+# Force re-download firefox portable executable, run tests headless under xvfb:
+./scripts/get_firefox.sh --force FIREFOX_BINARY="$(pwd)/firefox/firefox" xvfb-run -s "-screen 0 1920x1080x24" /home/thesteff/workspace/pytest_demo/.venv/bin/python -m pytest -q
 ```
+
+Jenkins and Kubernetes Setup
+
+This project includes Jenkins pipeline configuration for running tests in a Kubernetes environment. Here's how to set it up:
+
+1. Install Required Jenkins Plugins
+   - Kubernetes plugin
+   - Pipeline plugin (usually pre-installed)
+   - JUnit plugin
+
+2. Set up Local Kubernetes (Minikube)
+```bash
+# Install Minikube and dependencies
+sudo apt-get update
+sudo apt-get install -y virtualbox virtualbox-ext-pack
+
+# Install kubectl
+curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
+
+# Install Minikube
+curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
+sudo install minikube-linux-amd64 /usr/local/bin/minikube
+
+# Start Minikube
+minikube start
+```
+
+3. Get Kubernetes Credentials for Jenkins
+```bash
+# Create directory for certificates
+mkdir -p ~/jenkins-k8s-certs
+
+# Get the certificates
+minikube ssh sudo cat /var/lib/minikube/certs/ca.crt > ~/jenkins-k8s-certs/ca.crt
+minikube ssh sudo cat /var/lib/minikube/certs/apiserver-kubelet-client.crt > ~/jenkins-k8s-certs/client.crt
+minikube ssh sudo cat /var/lib/minikube/certs/apiserver-kubelet-client.key > ~/jenkins-k8s-certs/client.key
+```
+
+4. Configure Jenkins Kubernetes Integration
+   - Go to `Manage Jenkins` > `Manage Credentials`
+   - Click on `(global)` domain
+   - Click `Add Credentials`
+   - Select `Kubernetes Service Account`
+   - Fill in:
+     - ID: `minikube-credentials` (or your preference)
+     - Description: "Minikube cluster credentials"
+     - Copy contents from:
+       - `~/jenkins-k8s-certs/ca.crt` → "Certificate Authority Data"
+       - `~/jenkins-k8s-certs/client.crt` → "Client Certificate Data"
+       - `~/jenkins-k8s-certs/client.key` → "Client Key Data"
+
+5. Configure Kubernetes Cloud in Jenkins
+   - Go to `Manage Jenkins` > `Configure System`
+   - Find "Cloud" section
+   - Add new Kubernetes cloud:
+     ```
+     Name: kubernetes
+     Kubernetes URL: https://<minikube-ip>:8443  (get IP from 'minikube ip')
+     Kubernetes Namespace: default
+     Credentials: select the one created above
+     Jenkins URL: http://<jenkins-ip>:8080
+     ```
+
+6. Create Jenkins Pipeline
+   - Create new Pipeline job
+   - Configure Git repository:
+     - Repository URL: your GitHub repo URL
+     - Branch Specifier: `*/main`
+     - Script Path: `Jenkinsfile`
+
+7. Optional: Set up Kubernetes RBAC
+```bash
+kubectl create serviceaccount jenkins
+kubectl create rolebinding jenkins-admin-binding --clusterrole=admin --serviceaccount=default:jenkins
+```
+
+The included Jenkinsfile will automatically:
+- Create a pod with Python and Selenium containers
+- Run the tests in the containerized environment
+- Report test results
 
 Notes and troubleshooting
 - The project uses `webdriver-manager` to download a matching geckodriver automatically.
