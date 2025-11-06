@@ -93,8 +93,13 @@ sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
 curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
 sudo install minikube-linux-amd64 /usr/local/bin/minikube
 
-# Start Minikube
+# For VirtualBox driver (requires nested virtualization):
 minikube start
+
+# For Docker driver (recommended in VMs, no nested virtualization needed):
+# Use the included helper script to set up Docker and start Minikube:
+chmod +x scripts/setup_minikube_docker.sh
+./scripts/setup_minikube_docker.sh 2048  # specify memory in MB
 ```
 
 3. Get Kubernetes Credentials for Jenkins
