@@ -4,12 +4,18 @@ set -euo pipefail
 # Small wrapper to run pytest inside the container. Accepts extra pytest args.
 cd /workspace
 
-# Ensure we have an installed pytest (installed in image)
+TEST_RESULTS_DIR=/workspace/test-results
+mkdir -p "$TEST_RESULTS_DIR"
+
 echo "Running tests inside container (FIREFOX_BINARY=${FIREFOX_BINARY:-/usr/bin/firefox})"
 
-# Allow passing extra args to pytest
+# Default pytest args: verbose and JUnit xml output for Jenkins
+DEFAULT_ARGS=( -v --junitxml="$TEST_RESULTS_DIR/junit-results.xml" )
+
 if [ "$#" -eq 0 ]; then
-  pytest -v
+  pytest "${DEFAULT_ARGS[@]}"
 else
-  pytest -v "$@"
+  pytest "${DEFAULT_ARGS[@]}" "$@"
 fi
+
+echo "Tests finished. Results are in $TEST_RESULTS_DIR"

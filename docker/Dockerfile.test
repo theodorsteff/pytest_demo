@@ -19,3 +19,6 @@ ENV FIREFOX_BINARY=/usr/bin/firefox
 
 # Use a small helper script as the container entrypoint
 ENTRYPOINT ["/workspace/docker/run_tests_in_container.sh"]
+
+# Ensure test-results directory exists and is writable
+RUN mkdir -p /workspace/test-results && chown -R root:root /workspace/test-results

@@ -19,15 +19,30 @@ pipeline {
     stage('Run tests in container') {
       steps {
         // run container with increased shm to avoid Firefox crashes
-        sh 'docker run --rm --shm-size=1g ${IMAGE_NAME}'
+        // Mount the Jenkins workspace into the container so test-results are accessible
+        sh 'docker run --rm --shm-size=1g -v "${WORKSPACE}:/workspace" ${IMAGE_NAME}'
       }
     }
 
     stage('Collect results') {
       steps {
-        // If you produce junit xmls under /workspace/test-results inside container, you can use docker cp to extract them.
-        // For simplicity we expect tests to print output to console. Add any report copying here if needed.
-        echo 'Tests finished. Check console output for results.'
+        // Archive JUnit XML reports and any other artifacts produced in test-results/
+        junit allowEmptyResults: true, testResults: 'test-results/*.xml'
+        archiveArtifacts allowEmptyArchive: true, artifacts: 'test-results/**'
+        echo 'Tests finished. Results archived (if present).'
+      }
+    }
+    
+    stage('Publish image (optional)') {
+      when {
+        expression { return env.DOCKER_PUSH == 'true' }
+      }
+      steps {
+        withCredentials([string(credentialsId: 'docker-username', variable: 'DOCKER_USERNAME'), string(credentialsId: 'docker-password', variable: 'DOCKER_PASSWORD')]) {
+          sh 'echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin ${DOCKER_REGISTRY ?: "docker.io"}'
+          sh 'docker tag ${IMAGE_NAME} ${DOCKER_REGISTRY ?: "docker.io"}/${DOCKER_USERNAME}/${IMAGE_NAME}'
+          sh 'docker push ${DOCKER_REGISTRY ?: "docker.io"}/${DOCKER_USERNAME}/${IMAGE_NAME}'
+        }
       }
     }
   }
