@@ -1,0 +1,11 @@
+.git
+firefox/
+*.tar.*
+*.zip
+**/__pycache__
+*.pyc
+*.pyo
+.env
+.venv
+.DS_Store
+node_modules

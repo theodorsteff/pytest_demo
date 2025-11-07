@@ -1,0 +1,40 @@
+pipeline {
+  agent any
+  environment {
+    IMAGE_NAME = "pytest_demo_test:docker"
+  }
+  stages {
+    stage('Checkout') {
+      steps {
+        checkout scm
+      }
+    }
+
+    stage('Build Docker image') {
+      steps {
+        sh 'docker build -t ${IMAGE_NAME} -f docker/Dockerfile.test .'
+      }
+    }
+
+    stage('Run tests in container') {
+      steps {
+        // run container with increased shm to avoid Firefox crashes
+        sh 'docker run --rm --shm-size=1g ${IMAGE_NAME}'
+      }
+    }
+
+    stage('Collect results') {
+      steps {
+        // If you produce junit xmls under /workspace/test-results inside container, you can use docker cp to extract them.
+        // For simplicity we expect tests to print output to console. Add any report copying here if needed.
+        echo 'Tests finished. Check console output for results.'
+      }
+    }
+  }
+  post {
+    always {
+      // Optional: archive artifacts if present
+      archiveArtifacts allowEmptyArchive: true, artifacts: 'test-results/**'
+    }
+  }
+}

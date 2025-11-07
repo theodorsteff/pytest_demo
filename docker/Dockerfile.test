@@ -1,0 +1,21 @@
+FROM selenium/standalone-firefox:latest
+
+# Install Python and pip
+USER root
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends python3 python3-pip python3-venv \
+    && ln -sf /usr/bin/python3 /usr/bin/python
+
+WORKDIR /workspace
+
+# Copy and install Python deps
+COPY requirements.txt /workspace/requirements.txt
+RUN pip3 install --no-cache-dir -r /workspace/requirements.txt
+
+# Copy project into the image
+COPY . /workspace
+
+ENV FIREFOX_BINARY=/usr/bin/firefox
+
+# Use a small helper script as the container entrypoint
+ENTRYPOINT ["/workspace/docker/run_tests_in_container.sh"]
