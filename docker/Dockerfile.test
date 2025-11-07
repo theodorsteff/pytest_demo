@@ -3,8 +3,13 @@ FROM selenium/standalone-firefox:latest
 # Install Python and pip
 USER root
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends python3 python3-pip python3-venv \
-    && ln -sf /usr/bin/python3 /usr/bin/python
+    && apt-get install -y --no-install-recommends \
+       python3 \
+       python3-pip \
+       python3-venv \
+       xvfb \
+    && ln -sf /usr/bin/python3 /usr/bin/python \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /workspace
 
@@ -15,10 +20,15 @@ RUN pip3 install --no-cache-dir -r /workspace/requirements.txt
 # Copy project into the image
 COPY . /workspace
 
-ENV FIREFOX_BINARY=/usr/bin/firefox
+# Ensure test-results directory exists and is writable
+RUN mkdir -p /workspace/test-results && \
+    chown -R seluser:seluser /workspace/test-results /workspace
+
+# Switch back to the selenium user
+USER seluser
+ENV HOME=/home/seluser \
+    DISPLAY=:99 \
+    FIREFOX_BINARY=/usr/bin/firefox
 
 # Use a small helper script as the container entrypoint
 ENTRYPOINT ["/workspace/docker/run_tests_in_container.sh"]
-
-# Ensure test-results directory exists and is writable
-RUN mkdir -p /workspace/test-results && chown -R root:root /workspace/test-results
