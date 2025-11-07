@@ -20,6 +20,8 @@ def driver():
     options = Options()
     # Headless mode for CI by default
     options.headless = True
+    if options.headless:
+        options.add_argument("--headless")
     # Set a reasonable window size for tests that rely on dimensions
     options.add_argument("--width=1200")
     options.add_argument("--height=800")
